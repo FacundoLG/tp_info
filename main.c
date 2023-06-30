@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <termcap.h>
+#include <termmgr.h>
 #include <windows.h>
 #include <conio.h>
 
@@ -40,6 +40,9 @@ FIGURE figure = {
     .count = 0
 };
 
+int EXIT = FALSE;
+int CONTINUE = TRUE;
+
 void load_terminal_data(UI * ui);
 char* format_keys();
 void clear_terminal();
@@ -56,33 +59,30 @@ void on_press(char prs_key,char matrix[ui.row_size][ui.col_size]);
 void print_matrix(UI ui,char matrix[ui.row_size][ui.col_size]);
 
 
-int EXIT = FALSE;
-int CONTINUE = TRUE;
 
 //Control functions
-
-
 int main(){
-    //Before-Loop
-    HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
     //Gets terminal information
     load_terminal_data(&ui);
+
+    //Before-Loop
+    HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
     //Save original user cursor info
+
     CONSOLE_CURSOR_INFO original_cursor_info;
     GetConsoleCursorInfo(console,&original_cursor_info);
     //Creates new cursor struct instance
+
     CONSOLE_CURSOR_INFO cursor_info;
     //Hide cursor
     cursor_info.dwSize = 100;
     cursor_info.bVisible = FALSE;
     SetConsoleCursorInfo(console,&cursor_info);
-    
+
     char * controls = format_keys();
     while(CONTINUE){
         EXIT = FALSE;
         char matrix[ui.row_size][ui.col_size];
-        cursor.x_pos=0;
-        cursor.y_pos=0;
         cursor.x_pos = ui.col_size/2;
         cursor.y_pos = ui.row_size/2;
         //Clean figure information;
@@ -92,8 +92,6 @@ int main(){
         }
         figure.count = 0;
         add_dot(cursor.y_pos,cursor.x_pos,&figure);
-            
-        //UI Loop
         for(int i = 0; i < ui.row_size; i++){
                 for(int z = 0;z < ui.col_size;z++){
                     if(i == 0 || i == ui.row_size-1 || z == 0 || z == ui.col_size - 1){
@@ -106,8 +104,9 @@ int main(){
                     }
                 }
         }
+        //UI Loop
+        clear_terminal();
         while(!EXIT){
-            clear_terminal();
             print_matrix(ui,matrix);
             printf("%s",controls);
             char prs_key = getch();
@@ -121,10 +120,10 @@ int main(){
             }
         }
         if(CONTINUE){
-            printf("Crear otra figura?(s/n): ");
-            char answer;
-            scanf(" %c",&answer);
-            if(answer != 's'){
+            printf("Crear otra figura?");
+            printf(" [1] SI [otro] NO\n");
+            int answer = getch();
+            if(answer != '1'){
                   CONTINUE = FALSE;
             }
         }
@@ -140,20 +139,20 @@ void load_terminal_data(UI * ui){
     GetConsoleScreenBufferInfo(terminal,&screen_info);
     ui->row_size = screen_info.srWindow.Bottom - screen_info.srWindow.Top - 1 ;
     ui->col_size = (screen_info.srWindow.Right - screen_info.srWindow.Left) / 2;
-    if(ui->col_size > 200){
-        ui->col_size = 200;
+    if(ui->col_size > 40){
+        ui->col_size = 40;
     }
 }
 
 char* format_keys(){
     char format[] = "ARRIBA[%c] ABAJO[%c] IZQUIERDA[%c] DERECHA[%c] SALIR[%c]\n";
     static char key_str[sizeof(format)/sizeof(char)];
-    sprintf(key_str,format,UP_KEY,DOWN_KEY,LEFT_KEY,RIGHT_KEY,EXIT_KEY);
+    sprintf_s(key_str,sizeof(key_str),format,UP_KEY,DOWN_KEY,LEFT_KEY,RIGHT_KEY,EXIT_KEY);
     return key_str;
 }
 
 void clear_terminal(){
-    system("clear");
+    //system("clear");
     system("cls");
 }
 void calculate_area(FIGURE figure){
@@ -182,18 +181,18 @@ void moveLeft(){
 }
 
 void moveRight(){
-    if(cursor.x_pos < ui.col_size)
+    if(cursor.x_pos < ui.col_size-2)
         cursor.x_pos += 1;
 }
 
 void moveUp(){
     if(cursor.y_pos > 1)
         cursor.y_pos -= 1;
-    
+
 }
 
 void moveDown(){
-    if(cursor.y_pos < ui.row_size)
+    if(cursor.y_pos < ui.row_size-2)
         cursor.y_pos += 1;
 }
 void on_press(char prs_key,char matrix[ui.row_size][ui.col_size]){
@@ -218,7 +217,7 @@ void on_press(char prs_key,char matrix[ui.row_size][ui.col_size]){
     case EXIT_KEY:
         Exit();
     }
-    
+
 
     int isVertical = last_y_pos != cursor.y_pos;
     int isHorizontal = last_x_pos != cursor.x_pos;
@@ -240,7 +239,7 @@ void on_press(char prs_key,char matrix[ui.row_size][ui.col_size]){
 
     matrix[figure.y_pos[0]][figure.x_pos[0]] = 'O'; //Origin
 
-    if(cursor.x_pos == figure.x_pos[0] && cursor.y_pos == figure.y_pos[0]){
+    if(cursor.x_pos == figure.x_pos[0] && cursor.y_pos == figure.y_pos[0] && figure.count > 3){
             add_dot(figure.y_pos[0],figure.x_pos[0],&figure);
             EXIT = TRUE;
         }
